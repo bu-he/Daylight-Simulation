@@ -4,6 +4,20 @@
 
 **在线使用**：开启 GitHub Pages 后直接访问仓库 Pages 地址，或双击 `index.html` 离线运行。
 
+## 演示截图
+
+**单间模拟** — 太阳高度角 × 叶片角度实时联动，Canvas 剖面光线动画：
+
+![单间模拟](screenshots/screenshot-1-main.png)
+
+**正午·强遮阳工况** — 高角度太阳 + 大叶片角度，进深缩短、照度下降：
+
+![正午强遮阳](screenshots/screenshot-2-noon.png)
+
+**全天工况** — 分时段数据对照，支持一键导出 CSV：
+
+![全天工况](screenshots/screenshot-3-daily.png)
+
 ## 功能
 
 - **单间模拟**：拖动滑块调节太阳高度角（12°–80°）与百叶帘叶片角度（0°–75°），Canvas 剖面光线动画、地面光斑与数据面板实时联动
