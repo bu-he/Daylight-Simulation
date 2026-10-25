@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>建筑遮阳采光模拟演示系统</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; font-family: "Microsoft YaHei", "PingFang SC", sans-serif; }
+  body { background: #f6f7f2; color: #2b2f36; }
+  .layout { display: flex; height: 100vh; }
+  .sidebar { width: 220px; background: #2d3a2e; color: #cdd8cc; display: flex; flex-direction: column; }
+  .brand { display: flex; align-items: center; gap: 10px; padding: 20px 18px; font-size: 16px; font-weight: bold; color: #fff; border-bottom: 1px solid rgba(255,255,255,.08); }
+  .brand .logo { width: 30px; height: 30px; border-radius: 8px; background: linear-gradient(135deg,#f5a623,#7ed957); display: flex; align-items: center; justify-content: center; font-size: 15px; }
+  .nav { padding: 14px 10px; }
+  .nav a { display: flex; align-items: center; gap: 10px; padding: 11px 14px; border-radius: 8px; color: #cdd8cc; text-decoration: none; font-size: 14px; margin-bottom: 4px; cursor: pointer; }
+  .nav a.active, .nav a:hover { background: rgba(247,181,56,.15); color: #fff; }
+  .side-note { padding: 16px 18px; font-size: 12px; color: #8fa08d; line-height: 1.9; border-top: 1px solid rgba(255,255,255,.08); margin-top: auto; }
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .topbar { height: 58px; background: #fff; border-bottom: 1px solid #e6e9f0; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; flex-shrink: 0; }
+  .topbar h2 { font-size: 16px; }
+  .badge { display: inline-block; background: #e8f3ff; color: #2563eb; font-size: 12px; padding: 2px 10px; border-radius: 20px; margin-left: 10px; }
+  .meta { font-size: 12px; color: #8a92a5; }
+  .content { flex: 1; display: flex; gap: 16px; padding: 18px 22px; overflow: auto; }
+  .view { display: none; flex: 1; }
+  .view.on { display: flex; }
+  /* 左侧控制 */
+  .controls { width: 250px; background: #fff; border: 1px solid #e6e9f0; border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 18px; flex-shrink: 0; }
+  .ctl h4 { font-size: 13px; color: #4c5568; margin-bottom: 10px; display: flex; justify-content: space-between; }
+  .ctl h4 b { color: #f5a623; }
+  input[type=range] { width: 100%; accent-color: #f5a623; }
+  .presets { display: flex; gap: 8px; flex-wrap: wrap; }
+  .chip { border: 1px solid #e2e6ee; background: #f8fafc; color: #4c5568; border-radius: 20px; padding: 7px 14px; font-size: 12px; cursor: pointer; }
+  .chip.on { background: #f5a623; border-color: #f5a623; color: #fff; }
+  .exp { font-size: 12px; color: #8a92a5; line-height: 1.8; background: #f8faf6; border: 1px dashed #dfe6d8; border-radius: 8px; padding: 10px 12px; }
+  /* 中间画布 */
+  .stage { flex: 1; background: #fff; border: 1px solid #e6e9f0; border-radius: 12px; position: relative; overflow: hidden; min-width: 0; }
+  canvas { display: block; }
+  .stage .cap { position: absolute; left: 16px; bottom: 12px; font-size: 12px; color: #8a92a5; }
+  /* 右侧数据 */
+  .stats { width: 240px; display: flex; flex-direction: column; gap: 12px; flex-shrink: 0; }
+  .stat { background: #fff; border: 1px solid #e6e9f0; border-radius: 12px; padding: 14px 16px; }
+  .stat .num { font-size: 24px; font-weight: bold; }
+  .stat .lbl { font-size: 12px; color: #8a92a5; margin-top: 3px; }
+  .g-ok { color: #18a058; } .g-warn { color: #d48806; } .g-bad { color: #d4380d; } .g-blue { color: #2563eb; }
+  .compare-box { background: #fff; border: 1px solid #e6e9f0; border-radius: 12px; padding: 14px 16px; flex: 1; }
+  .compare-box h4 { font-size: 13px; color: #4c5568; margin-bottom: 10px; }
+  .bar-row { margin-bottom: 10px; font-size: 12px; }
+  .bar-row .bl { display: flex; justify-content: space-between; margin-bottom: 4px; color: #64748b; }
+  .bar { height: 8px; background: #eef2f7; border-radius: 6px; overflow: hidden; }
+  .bar i { display: block; height: 100%; background: linear-gradient(90deg,#f5a623,#7ed957); border-radius: 6px; }
+  /* 表格视图 */
+  .panel { background: #fff; border: 1px solid #e6e9f0; border-radius: 12px; padding: 18px 20px; width: 100%; }
+  .panel h3 { font-size: 14px; margin-bottom: 12px; color: #4c5568; }
+  .btn { background: #2563eb; color: #fff; border: none; border-radius: 8px; padding: 8px 16px; font-size: 13px; cursor: pointer; }
+  .btn.ghost { background: #f4f6fa; color: #4c5568; border: 1px solid #e2e6ee; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; color: #8a92a5; font-weight: normal; padding: 8px 10px; background: #f8fafc; border-bottom: 1px solid #eef1f6; }
+  td { padding: 9px 10px; border-bottom: 1px solid #f1f3f8; }
+  .cmp-grid { display: flex; gap: 10px; margin-bottom: 14px; }
+  .cmp { flex: 1; border: 1px solid #e6e9f0; border-radius: 10px; padding: 10px; text-align: center; font-size: 12px; color: #64748b; }
+  .cmp b { display: block; font-size: 16px; color: #2b2f36; margin-bottom: 2px; }
+  .cmp.sel { border-color: #f5a623; background: #fffaf0; }
+  .note { font-size: 12px; color: #8a92a5; margin-top: 12px; line-height: 1.8; }
+</style>
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand"><div class="logo">☀</div>采光遮阳模拟器</div>
+    <nav class="nav">
+      <a class="active" data-view="main">🏠 单间模拟</a>
+      <a data-view="day">🕐 全天工况</a>
+      <a data-view="compare">⚖ 方案对比</a>
+    </nav>
+    <div class="side-note">
+      演示原理：<br>
+      根据太阳高度角与遮阳帘叶片角度，计算直射光进深、室内相对照度与遮阳系数，用于门窗方案的展示讲解。<br><br>
+      纯前端单文件应用，可离线运行。
+    </div>
+  </aside>
+  <main class="main">
+    <div class="topbar">
+      <h2 id="viewTitle">单间采光模拟 <span class="badge">实时计算</span></h2>
+      <div class="meta">房间 5.0m × 3.2m · 窗高 2.1m · 窗台高 0.9m · 南向</div>
+    </div>
+
+    <!-- 视图1：单间模拟 -->
+    <div class="content view on" id="view-main">
+      <div class="controls">
+        <div class="ctl">
+          <h4>太阳高度角 <b id="sunVal">35°</b></h4>
+          <input type="range" id="sun" min="12" max="80" value="35">
+        </div>
+        <div class="ctl">
+          <h4>百叶帘叶片角度 <b id="bladeVal">30°</b></h4>
+          <input type="range" id="blade" min="0" max="75" value="30">
+        </div>
+        <div class="ctl">
+          <h4>典型工况</h4>
+          <div class="presets">
+            <span class="chip" data-sun="18" data-blade="0">清晨·帘全开</span>
+            <span class="chip on" data-sun="35" data-blade="30">上午·半开</span>
+            <span class="chip" data-sun="72" data-blade="55">正午·强遮阳</span>
+            <span class="chip" data-sun="15" data-blade="65">夕晒·防眩光</span>
+          </div>
+        </div>
+        <div class="exp">
+          叶片角度 0° = 水平全开（进光最多）；75° = 近似闭合（仅缝隙进光）。拖动滑块实时观察光线进深与地面光斑变化。
+        </div>
+      </div>
+      <div class="stage">
+        <canvas id="cv"></canvas>
+        <div class="cap">剖面示意 · 光线颜色代表照度强弱 · 地面色带为直射光斑范围</div>
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="num g-blue" id="dDepth">–</div><div class="lbl">直射光进深（距窗）</div></div>
+        <div class="stat"><div class="num g-ok" id="dLux">–</div><div class="lbl">室内相对照度</div></div>
+        <div class="stat"><div class="num g-warn" id="dSc">–</div><div class="lbl">遮阳系数 SC</div></div>
+        <div class="stat"><div class="num g-bad" id="dGlare">–</div><div class="lbl">近窗眩光风险</div></div>
+        <div class="compare-box">
+          <h4>方案横向对比（当前工况）</h4>
+          <div class="bar-row"><div class="bl"><span>无遮阳</span><span>100%</span></div><div class="bar"><i style="width:100%"></i></div></div>
+          <div class="bar-row"><div class="bl"><span>布艺卷帘</span><span>55%</span></div><div class="bar"><i style="width:55%"></i></div></div>
+          <div class="bar-row"><div class="bl"><span>百叶帘（当前）</span><span id="bBarTxt">–</span></div><div class="bar"><i id="bBar" style="width:0%"></i></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 视图2：全天工况 -->
+    <div class="content view" id="view-day">
+      <div class="panel">
+        <h3>全天工况曲线（叶片 30°）<button class="btn" style="float:right" id="csvBtn">导出 CSV</button></h3>
+        <table>
+          <tr><th>时刻</th><th>太阳高度角</th><th>直射光进深</th><th>相对照度</th><th>遮阳系数</th><th>眩光风险</th></tr>
+          <tbody id="dayRows"></tbody>
+        </table>
+        <div class="note">结论：正午高度角大、进深浅但照度强，适合加大叶片角度遮阳；早晚角度小、光线可直达房间深处，适合开帘引光。数据可导出 CSV 用于方案汇报。</div>
+      </div>
+    </div>
+
+    <!-- 视图3：方案对比 -->
+    <div class="content view" id="view-compare">
+      <div class="panel">
+        <h3>三种遮阳方案对比（上午工况 太阳35°）</h3>
+        <div class="cmp-grid">
+          <div class="cmp"><b>100%</b>无遮阳<br>进深4.2m<br>照度100%<br><span style="color:#d4380d">眩光高</span></div>
+          <div class="cmp sel"><b>47%</b>百叶帘30°<br>进深4.2m<br>照度62%<br><span style="color:#d48806">眩光偏高</span></div>
+          <div class="cmp"><b>22%</b>百叶帘65°<br>进深4.2m<br>照度29%<br><span style="color:#18a058">眩光低</span></div>
+        </div>
+        <table>
+          <tr><th>方案</th><th>遮阳系数SC</th><th>采光折减</th><th>视线通透</th><th>适用场景</th></tr>
+          <tr><td>无遮阳</td><td>1.00</td><td>—</td><td>最好</td><td>阴天 / 北向房间</td></tr>
+          <tr><td>布艺卷帘</td><td>0.55</td><td>45%</td><td>无</td><td>投影 / 午休</td></tr>
+          <tr><td>百叶帘可调</td><td>0.28 ~ 0.85</td><td>可调</td><td>可保留</td><td>办公 / 展厅（推荐）</td></tr>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+<script>
+  /* ---------- 物理模型 ---------- */
+  const sillH = 0.9, winH = 2.1, roomD = 5.0, ROOM_H = 3.2;
+  const rad = a => a * Math.PI / 180;
+  function calc(sun, blade) {
+    const depth = Math.min(roomD, (sillH + winH) / Math.tan(rad(sun)));
+    const openRatio = 1 - blade / 75 * 0.82;
+    const directRatio = sun > 30 ? 0.55 + 0.45 * Math.sin(rad(sun)) : 0.35 + 0.02 * sun;
+    const lux = Math.round(openRatio * directRatio * 100);
+    const sc = +(0.12 + 0.88 * openRatio * (0.35 + 0.65 * Math.sin(rad(sun)))).toFixed(2);
+    const glare = lux > 70 ? "高" : lux > 45 ? "偏高" : lux > 25 ? "适中" : "低";
+    return { depth, openRatio, lux, sc, glare };
+  }
+
+  /* ---------- 主视图：实时计算 + 重绘 ---------- */
+  const cv = document.getElementById("cv"), ctx = cv.getContext("2d");
+  let sun = 35, blade = 30;
+
+  function draw() {
+    const stage = cv.parentElement;
+    const W = cv.width = stage.clientWidth - 2;
+    const Hc = cv.height = stage.clientHeight - 2;
+    const groundY = Hc - 60, sx = 90;
+    const ppm = Math.min(130, (W - sx - 40) / 5.0);
+    const px = m => sx + m * ppm;
+    const py = m => groundY - m * ppm;
+    const { depth, openRatio } = calc(sun, blade);
+
+    const sky = ctx.createLinearGradient(0, 0, 0, groundY);
+    sky.addColorStop(0, "#dbeafe"); sky.addColorStop(1, "#f0f9ff");
+    ctx.fillStyle = sky; ctx.fillRect(0, 0, W, groundY);
+    // 太阳
+    const sunX = Math.max(34, px(-0.9));
+    const sunY = Math.max(30, py(sillH + winH) - 1.5 * ppm * Math.tan(rad(sun)));
+    const sunG = ctx.createRadialGradient(sunX, sunY, 6, sunX, sunY, 60);
+    sunG.addColorStop(0, "#fbbf24"); sunG.addColorStop(1, "rgba(251,191,36,0)");
+    ctx.fillStyle = sunG; ctx.beginPath(); ctx.arc(sunX, sunY, 60, 0, 7); ctx.fill();
+    ctx.fillStyle = "#f59e0b"; ctx.beginPath(); ctx.arc(sunX, sunY, 22, 0, 7); ctx.fill();
+    // 房间
+    ctx.fillStyle = "#fdfcf7"; ctx.fillRect(px(0), py(ROOM_H), roomD * ppm, ROOM_H * ppm);
+    ctx.strokeStyle = "#94a3b8"; ctx.lineWidth = 3;
+    ctx.strokeRect(px(0), py(ROOM_H), roomD * ppm, ROOM_H * ppm);
+    ctx.fillStyle = "#e7e0cf"; ctx.fillRect(px(0), groundY, W - sx, 12);
+    // 窗
+    ctx.fillStyle = "#bfdbfe";
+    ctx.fillRect(sx - 10, py(sillH + winH), 10, winH * ppm);
+    ctx.strokeStyle = "#64748b"; ctx.lineWidth = 2;
+    ctx.strokeRect(sx - 10, py(sillH + winH), 10, winH * ppm);
+    // 百叶帘
+    ctx.save();
+    ctx.strokeStyle = blade > 50 ? "#a16207" : "#d4a94e"; ctx.lineWidth = 3;
+    const nB = 9;
+    for (let i = 0; i < nB; i++) {
+      const yy = py(sillH + winH) + 6 + i * (winH * ppm - 12) / (nB - 1);
+      ctx.beginPath();
+      ctx.moveTo(sx - 12, yy);
+      ctx.lineTo(sx - 12 + 16 * Math.cos(rad(blade)), yy + 6 * Math.sin(rad(blade)));
+      ctx.stroke();
+    }
+    ctx.restore();
+    // 光线
+    const rays = 7;
+    for (let i = 0; i < rays; i++) {
+      const t = i / (rays - 1);
+      const y0 = py(sillH + winH * (0.15 + 0.85 * t));
+      const x1 = px(depth);
+      const g = ctx.createLinearGradient(sx, y0, x1, groundY);
+      const alpha = (0.05 + 0.30 * (1 - Math.abs(t - 0.5) * 1.4)) * openRatio;
+      g.addColorStop(0, `rgba(253,224,71,${Math.max(alpha, 0.03)})`);
+      g.addColorStop(1, `rgba(253,224,71,${Math.max(alpha * 0.5, 0.02)})`);
+      ctx.strokeStyle = g; ctx.lineWidth = 7;
+      ctx.beginPath(); ctx.moveTo(sx, y0); ctx.lineTo(x1, groundY); ctx.stroke();
+    }
+    // 地面光斑
+    const g2 = ctx.createLinearGradient(px(0), 0, px(depth), 0);
+    g2.addColorStop(0, `rgba(253,224,71,${0.55 * openRatio})`);
+    g2.addColorStop(1, `rgba(253,224,71,0)`);
+    ctx.fillStyle = g2;
+    ctx.fillRect(px(0), groundY, depth * ppm, 12);
+    // 标尺
+    ctx.strokeStyle = "#cbd5e1"; ctx.fillStyle = "#64748b"; ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(px(0), groundY + 34); ctx.lineTo(px(depth), groundY + 34);
+    ctx.moveTo(px(0), groundY + 28); ctx.lineTo(px(0), groundY + 40);
+    ctx.moveTo(px(depth), groundY + 28); ctx.lineTo(px(depth), groundY + 40);
+    ctx.stroke();
+    ctx.font = "13px sans-serif";
+    ctx.fillText(`直射光进深 ${depth.toFixed(2)} m`, px(depth / 2) - 50, groundY + 56);
+    ctx.fillText("窗", sx - 24, py(sillH + winH / 2));
+    ctx.fillText("室内", px(roomD - 0.55), py(ROOM_H) + 22);
+    // 家具
+    ctx.fillStyle = "#cbd5c0";
+    ctx.fillRect(px(3.6), groundY - 42, 44, 42);
+    ctx.fillRect(px(4.3), groundY - 26, 52, 26);
+  }
+
+  function refresh() {
+    const r = calc(sun, blade);
+    document.getElementById("sunVal").textContent = sun + "°";
+    document.getElementById("bladeVal").textContent = blade + "°";
+    document.getElementById("dDepth").textContent = r.depth.toFixed(2) + " m";
+    document.getElementById("dLux").textContent = r.lux + "%";
+    const cls = "num g-" + (r.lux > 70 ? "bad" : r.lux > 45 ? "warn" : "ok");
+    document.getElementById("dLux").className = cls;
+    document.getElementById("dSc").textContent = r.sc;
+    document.getElementById("dGlare").textContent = r.glare;
+    document.getElementById("dGlare").className = cls;
+    document.getElementById("bBar").style.width = Math.round(r.openRatio * 100) + "%";
+    document.getElementById("bBarTxt").textContent = Math.round(r.openRatio * 100) + "%";
+    draw();
+  }
+
+  document.getElementById("sun").addEventListener("input", e => { sun = +e.target.value; syncChips(); refresh(); });
+  document.getElementById("blade").addEventListener("input", e => { blade = +e.target.value; syncChips(); refresh(); });
+  document.querySelectorAll(".chip").forEach(ch => ch.addEventListener("click", () => {
+    sun = +ch.dataset.sun; blade = +ch.dataset.blade;
+    document.getElementById("sun").value = sun;
+    document.getElementById("blade").value = blade;
+    syncChips(); refresh();
+  }));
+  function syncChips() {
+    document.querySelectorAll(".chip").forEach(ch =>
+      ch.classList.toggle("on", +ch.dataset.sun === sun && +ch.dataset.blade === blade));
+  }
+
+  /* ---------- 视图切换（相对状态，兼容 file:// 与任意子路径） ---------- */
+  const titles = { main: "单间采光模拟 <span class='badge'>实时计算</span>", day: "全天工况查询", compare: "遮阳方案对比" };
+  document.querySelectorAll(".nav a").forEach(a => a.addEventListener("click", () => showView(a.dataset.view)));
+  function showView(v) {
+    document.querySelectorAll(".view").forEach(s => s.classList.remove("on"));
+    document.getElementById("view-" + v).classList.add("on");
+    document.querySelectorAll(".nav a").forEach(a => a.classList.toggle("active", a.dataset.view === v));
+    document.getElementById("viewTitle").innerHTML = titles[v];
+    if (v === "main") requestAnimationFrame(refresh);
+  }
+
+  /* ---------- 全天工况 + CSV ---------- */
+  const dayData = [
+    ["08:00", 18], ["10:00", 42], ["12:00", 72], ["15:00", 38], ["17:30", 15]
+  ].map(([t, s]) => {
+    const r = calc(s, 30);
+    const depthTxt = (sillH + winH) / Math.tan(rad(s)) > roomD ? "超出房间" : r.depth.toFixed(2) + " m";
+    return [t, s + "°", depthTxt, r.lux + "%", r.sc, r.glare];
+  });
+  document.getElementById("dayRows").innerHTML = dayData
+    .map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td><td>${r[4]}</td><td>${r[5]}</td></tr>`).join("");
+  document.getElementById("csvBtn").addEventListener("click", () => {
+    const rows = [["时刻", "太阳高度角", "直射光进深", "相对照度", "遮阳系数", "眩光风险"], ...dayData];
+    const blob = new Blob(["\ufeff" + rows.map(r => r.join(",")).join("\n")], { type: "text/csv" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "全天采光工况_叶片30度.csv";
+    a.click();
+  });
+
+  /* ---------- 初始化（支持 URL 参数） ---------- */
+  const q = new URLSearchParams(location.search);
+  const qv = q.get("view");
+  if (qv && titles[qv]) showView(qv);
+  if (q.get("sun")) { sun = +q.get("sun"); document.getElementById("sun").value = sun; }
+  if (q.get("blade")) { blade = +q.get("blade"); document.getElementById("blade").value = blade; }
+  syncChips();
+  refresh();
+  window.addEventListener("resize", () => { if (document.getElementById("view-main").classList.contains("on")) draw(); });
+</script>
+</body>
+</html>
